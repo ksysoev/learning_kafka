@@ -2,31 +2,45 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"sync"
 
 	"github.com/segmentio/kafka-go"
 )
 
 func main() {
 	w := &kafka.Writer{
-		Addr:  kafka.TCP("localhost:9094", "localhost:9095", "localhost:9096"),
-		Topic: "test",
+		Addr:      kafka.TCP("localhost:9094", "localhost:9095", "localhost:9096"),
+		Topic:     "test",
+		Balancer:  &kafka.LeastBytes{},
+		BatchSize: 10,
 	}
+	wg := sync.WaitGroup{}
+	for i := 0; i < 1000; i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			fmt.Println("Writing message", i)
+			err := w.WriteMessages(context.Background(),
+				kafka.Message{
+					Value: []byte(fmt.Sprintf("message 0 %d", i)),
+				},
+				kafka.Message{
+					Value: []byte(fmt.Sprintf("message 1 %d", i)),
+				},
+				kafka.Message{
+					Value: []byte(fmt.Sprintf("message 2 %d", i)),
+				},
+			)
 
-	err := w.WriteMessages(context.Background(),
-		kafka.Message{
-			Value: []byte("Hello World!"),
-		},
-		kafka.Message{
-			Value: []byte("One!"),
-		},
-		kafka.Message{
-			Value: []byte("Two!"),
-		},
-	)
-	if err != nil {
-		log.Fatal("failed to write messages:", err)
+			if err != nil {
+				log.Fatal("failed to write messages:", err)
+			}
+		}()
 	}
+	wg.Wait()
 
 	if err := w.Close(); err != nil {
 		log.Fatal("failed to close writer:", err)

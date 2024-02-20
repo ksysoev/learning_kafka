@@ -11,10 +11,9 @@ import (
 
 func main() {
 	w := &kafka.Writer{
-		Addr:      kafka.TCP("localhost:9094", "localhost:9095", "localhost:9096"),
-		Topic:     "wikimedia_updates",
-		Balancer:  &kafka.LeastBytes{},
-		BatchSize: 10,
+		Addr:     kafka.TCP("localhost:9094", "localhost:9095", "localhost:9096"),
+		Topic:    "wikimedia_updates",
+		Balancer: &kafka.LeastBytes{},
 	}
 
 	client := sse.NewClient("https://stream.wikimedia.org/v2/stream/recentchange")

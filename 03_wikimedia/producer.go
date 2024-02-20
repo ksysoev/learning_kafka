@@ -20,17 +20,20 @@ func main() {
 	client := sse.NewClient("https://stream.wikimedia.org/v2/stream/recentchange")
 
 	client.SubscribeRaw(func(msg *sse.Event) {
-		var data map[string]any
-
-		json.Unmarshal(msg.Data, &data)
-
-		var key string
-		key, ok := data["server_name"].(string)
-		if !ok {
-			key = "unknown"
-		}
-
+		// By design of kafka-go it do batching of messages underhood and block until batch is ready
+		// So to avoid blocking we need to publish in goroutines
+		// alternativly we would need to batch on our own and reduce the batch timeout
 		go func() {
+			var data map[string]any
+
+			json.Unmarshal(msg.Data, &data)
+
+			var key string
+			key, ok := data["server_name"].(string)
+			if !ok {
+				key = "unknown"
+			}
+
 			err := w.WriteMessages(context.Background(),
 				kafka.Message{
 					Key:   []byte(key),
